@@ -1,0 +1,34 @@
+name: 编译SoftEtherVPN_Stable静态二进制文件
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    name: 编译SoftEtherVPN_Stable静态二进制文件
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 编译SoftEtherVPN_Stable静态二进制文件
+        run: |
+          git clone https://github.com/xilaochengv/toolchain-aarch64-linux-musl
+          export PATH=$(pwd)/toolchain-aarch64-linux-musl/bin:$PATH 
+          git clone https://github.com/SoftEtherVPN/SoftEtherVPN_Stable
+          cd SoftEtherVPN_Stable
+          cat .git/packed-refs | tail -2 | head -1 | awk -F '/' '{print $NF}' > ../version
+          echo "SoftEtherVPN_Stable_tag_name=$(cat ../version)" >> $GITHUB_ENV
+          sed -i "$(sed -n '/bool SiIsEnterpriseFunctionsRestrictedOnOpenSource/,/return ret/=' src/Cedar/Server.c | tail -1)c \\\treturn false;" src/Cedar/Server.c
+          ./configure
+          make -j8
+          sed -i '/-rm -f tmp\/hamcorebuilder/d' Makefile
+          make clean
+          sed -i "$(sed -n '/hamcorebuilder/=' Makefile | tail -1)d" Makefile
+          sed -i 's/-m64/-static/g' Makefile
+          make -j8 CC=aarch64-linux-musl-gcc
+          aarch64-linux-musl-strip bin/vpnserver/vpnserver
+          cd bin
+          mv -f vpnserver SoftEtherVPN_Stable_Static
+          tar zcf ../../SoftEtherVPN_Stable_Static_aarch64.tar.gz SoftEtherVPN_Stable_Static
+      - name: 上传文件到Releases
+        uses: softprops/action-gh-release@v1
+        with:
+          files: SoftEtherVPN_Stable_Static_aarch64.tar.gz
+          tag_name: ${{ env.SoftEtherVPN_Stable_tag_name }}
+          body: "SoftEtherVPN_Stable静态二进制文件"
