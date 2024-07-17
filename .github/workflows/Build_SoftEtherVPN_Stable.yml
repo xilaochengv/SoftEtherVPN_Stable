@@ -26,9 +26,19 @@ jobs:
           cd bin
           mv -f vpnserver SoftEtherVPN_Stable_Static
           tar zcf ../../SoftEtherVPN_Stable_Static_aarch64.tar.gz SoftEtherVPN_Stable_Static
+          cd ..
+          make clean
+          sed -i 's/-static//g' Makefile
+          make -j8 CC=aarch64-linux-musl-gcc
+          aarch64-linux-musl-strip bin/vpnserver/vpnserver
+          cd bin
+          mv -f vpnserver SoftEtherVPN_Stable
+          tar zcf ../../SoftEtherVPN_Stable_aarch64.tar.gz SoftEtherVPN_Stable
       - name: 上传文件到Releases
         uses: softprops/action-gh-release@v1
         with:
-          files: SoftEtherVPN_Stable_Static_aarch64.tar.gz
+          files: |
+            SoftEtherVPN_Stable_aarch64.tar.gz
+            SoftEtherVPN_Stable_Static_aarch64.tar.gz
           tag_name: ${{ env.SoftEtherVPN_Stable_tag_name }}
-          body: "SoftEtherVPN_Stable静态二进制文件"
+          body: "SoftEtherVPN_Stable二进制文件"
